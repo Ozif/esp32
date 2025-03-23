@@ -37,7 +37,25 @@ CRGB leds[LED_NUM];
 #define ON_OFF 33
 #define Change 32
 
-// function区域
+// 中断数据区域
+volatile int onoff = 0;
+volatile int change = 0;
+volatile bool onoff_pressed = false;
+volatile bool change_pressed = false;
+volatile unsigned long onoff_last_time = 0;
+volatile unsigned long change_last_time = 0;
+const unsigned long debounce_delay = 50000; // 消抖时间，单位为微秒（50 ms）
+
+void onOffISR()
+{
+    onoff_last_time = micros();
+    onoff_pressed = true;
+}
+void changeISR()
+{
+    change_last_time = micros();
+    change_pressed = true;
+}
 
 void setup()
 {
@@ -52,11 +70,46 @@ void setup()
 
     // MAX4466初始化
     pinMode(DATA_OUT, INPUT);
+
+    // 按键初始化
+    pinMode(ON_OFF, INPUT_PULLDOWN);
+    pinMode(Change, INPUT_PULLDOWN);
+
+    // 设置外部中断
+    attachInterrupt(digitalPinToInterrupt(ON_OFF), onOffISR, RISING);
+    attachInterrupt(digitalPinToInterrupt(Change), changeISR, RISING);
 }
 
 void loop()
 {
-    int dB = analogRead(DATA_OUT);
-    Serial.println(dB);
-    delay(1000);
+    // int dB = analogRead(DATA_OUT);
+    // Serial.println(dB);
+    // delay(1000);
+    static unsigned long last_onoff_time = 0;
+    static unsigned long last_change_time = 0;
+    if (onoff_pressed)
+    {
+        unsigned long current_time = micros();
+        if (current_time - onoff_last_time > debounce_delay)
+        {
+            onoff++;
+            last_onoff_time = current_time;
+        }
+        onoff_pressed = false;
+    }
+    if (change_pressed)
+    {
+        unsigned long current_time = micros();
+        if (current_time - change_last_time > debounce_delay)
+        {
+            change++;
+            last_change_time = current_time;
+        }
+        change_pressed = false;
+    }
+    Serial.print("onoff: ");
+    Serial.println(onoff);
+    Serial.print("change: ");
+    Serial.println(change);
+    delay(500);
 }
