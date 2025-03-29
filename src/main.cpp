@@ -18,6 +18,9 @@
 #include <Arduino.h>
 #include <fastLED.h>
 
+// 引入灯效
+#include "light.h"
+
 // LED参数
 // LED 的配置参数
 #define DATA_IN 12
@@ -38,7 +41,7 @@ CRGB leds[LED_NUM];
 #define Change 32
 
 // 中断数据区域
-volatile int onoff = 0;
+volatile bool onoff = 0;
 volatile int change = 0;
 volatile bool onoff_pressed = false;
 volatile bool change_pressed = false;
@@ -82,27 +85,34 @@ void setup()
 
 void loop()
 {
-    // int dB = analogRead(DATA_OUT);
-    // Serial.println(dB);
-    // delay(1000);
+    // 按键消抖
     static unsigned long last_onoff_time = 0;
     static unsigned long last_change_time = 0;
+    // 开关按键
     if (onoff_pressed)
     {
         unsigned long current_time = micros();
         if (current_time - onoff_last_time > debounce_delay)
         {
-            onoff++;
+            onoff = !onoff;
             last_onoff_time = current_time;
         }
         onoff_pressed = false;
     }
+    // 改变按键
     if (change_pressed)
     {
         unsigned long current_time = micros();
         if (current_time - change_last_time > debounce_delay)
         {
-            change++;
+            if (change < lights-1)
+            {
+                change++;
+            }
+            else
+            {
+                change = 0;
+            }
             last_change_time = current_time;
         }
         change_pressed = false;
@@ -110,6 +120,10 @@ void loop()
     Serial.print("onoff: ");
     Serial.println(onoff);
     Serial.print("change: ");
-    Serial.println(change);
+    Serial.println(light_names[change]);
+
+    // 读取MAX4466的数据
+    int dB = analogRead(DATA_OUT);
+    Serial.println(dB);
     delay(500);
 }
