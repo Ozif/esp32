@@ -18,9 +18,10 @@
 #include <Arduino.h>
 #include <fastLED.h>
 
-// 引入灯效
-#include "light.h"
-
+/**
+ * 引脚及其初始化
+ *
+ */
 // LED参数
 // LED 的配置参数
 #define DATA_IN 12
@@ -39,16 +40,22 @@ CRGB leds[LED_NUM];
 // 按键参数
 #define ON_OFF 33
 #define Change 32
+/***/
 
-// 中断数据区域
+/**
+ * 中断服务区
+ *
+ */
+// 参数
 volatile bool onoff = 0;
 volatile int change = 0;
 volatile bool onoff_pressed = false;
 volatile bool change_pressed = false;
 volatile unsigned long onoff_last_time = 0;
 volatile unsigned long change_last_time = 0;
-const unsigned long debounce_delay = 50000; // 消抖时间，单位为微秒（50 ms）
+const unsigned long debounce_delay = 50000; // 消抖时间，单位为微秒（共50 ms）
 
+// 中断函数
 void onOffISR()
 {
     onoff_last_time = micros();
@@ -59,6 +66,76 @@ void changeISR()
     change_last_time = micros();
     change_pressed = true;
 }
+/***/
+
+/**
+ * 灯效服务区
+ *
+ */
+// 彩虹参数
+u_int8_t rainbow_start = 0;
+
+// 呼吸参数
+// 初始化
+u_int8_t breatheV = 0;
+// 亮灭
+bool breathe_on = true;
+// 灯效函数
+void rainbow_ring(u_int8_t rainbow_start)
+{
+    fill_palette(leds, LED_NUM, rainbow_start, 8, RainbowColors_p, 255, LINEARBLEND);
+    LEDS.show();
+}
+void breathe(u_int8_t breatheV)
+{
+    fill_solid(leds, 40, CHSV(174, 255, breatheV));
+    LEDS.show();
+}
+void flower()
+{
+    fill_solid(leds, 40, CRGB::Green);
+    LEDS.show();
+}
+// 切换函数
+void function_light(int light_code)
+{
+    switch (light_code)
+    {
+    case 0:
+        rainbow_start += 1;
+        rainbow_ring(rainbow_start);
+        break;
+    case 1:
+        // 加减判断
+        if (breatheV == 0)
+        {
+            breathe_on = true;
+        }
+        if (breatheV == 255)
+        {
+            breathe_on = false;
+        }
+        // 渐变
+        switch (breathe_on)
+        {
+        case true:
+            breatheV += 1;
+            break;
+        case false:
+            breatheV -= 1;
+            break;
+        }
+        // 赋值给灯
+        breathe(breatheV);
+        break;
+    case 2:
+        flower();
+        break;
+    }
+}
+// 灯效个数
+unsigned int lights = 3;
+/***/
 
 void setup()
 {
@@ -85,7 +162,10 @@ void setup()
 
 void loop()
 {
-    // 按键消抖
+    /**
+     * 按键消抖
+     *
+     */
     static unsigned long last_onoff_time = 0;
     static unsigned long last_change_time = 0;
     // 开关按键
@@ -105,13 +185,28 @@ void loop()
         unsigned long current_time = micros();
         if (current_time - change_last_time > debounce_delay)
         {
-            if (change < lights-1)
+            if (change < lights - 1)
             {
                 change++;
             }
             else
             {
                 change = 0;
+            }
+            switch (change)
+            {
+            case 0:
+                /* code */
+                break;
+            case 1:
+                breatheV = 0;
+                break;
+            case 2:
+                /* code */
+                break;
+
+            default:
+                break;
             }
             last_change_time = current_time;
         }
@@ -120,10 +215,13 @@ void loop()
     Serial.print("onoff: ");
     Serial.println(onoff);
     Serial.print("change: ");
-    Serial.println(light_names[change]);
+    Serial.println(change);
+    // 调用灯效
+
+    function_light(change);
 
     // 读取MAX4466的数据
-    int dB = analogRead(DATA_OUT);
-    Serial.println(dB);
-    delay(500);
+    // int dB = analogRead(DATA_OUT);
+    // Serial.println(dB);
+    // delay(500);
 }
