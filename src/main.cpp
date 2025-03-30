@@ -94,6 +94,7 @@ void breathe(u_int8_t breatheV)
 
 // 流水
 int flow_i = 0;
+volatile unsigned long flow_time = 0; // delay会让按键触发困难
 void flower(int flow_i)
 {
     fill_solid(leds + flow_i, 3, CRGB::Red); // 亮灯
@@ -102,7 +103,7 @@ void flower(int flow_i)
         fill_solid(leds + flow_i - 1, 1, CRGB::Black);
     }
     FastLED.show();
-    delay(50); // 延时
+    flow_time = micros();
 }
 
 // 切换
@@ -138,14 +139,18 @@ void function_light(int light_code)
         breathe(breatheV);
         break;
     case 2: // 流水
-        flower(flow_i);
-        flow_i += 1;
-        if (flow_i >= LED_NUM + 3)
+        unsigned long current_time = micros();
+        if (current_time - flow_time > 50000)
         {
-            // 灯带末尾，清空灯带
-            fill_solid(leds, 40, CRGB::Black); // 先清空灯带
-            LEDS.show();                       // 显示清空
-            flow_i = 0;
+            flower(flow_i);
+            flow_i += 1;
+            if (flow_i >= LED_NUM + 3)
+            {
+                // 灯带末尾，清空灯带
+                fill_solid(leds, 40, CRGB::Black); // 先清空灯带
+                LEDS.show();                       // 显示清空
+                flow_i = 0;
+            }
         }
         break;
     }
@@ -183,8 +188,8 @@ void loop()
      * 按键消抖
      *
      */
-    static unsigned long last_onoff_time = 0;
-    static unsigned long last_change_time = 0;
+    // static unsigned long last_onoff_time = 0;
+    // static unsigned long last_change_time = 0;
     // 开关按键
     if (onoff_pressed)
     {
@@ -192,7 +197,7 @@ void loop()
         if (current_time - onoff_last_time > debounce_delay)
         {
             onoff = !onoff;
-            last_onoff_time = current_time;
+            // last_onoff_time = current_time;
         }
         onoff_pressed = false;
     }
@@ -202,7 +207,14 @@ void loop()
         unsigned long current_time = micros();
         if (current_time - change_last_time > debounce_delay)
         {
-            change<= lights - 1?change++:change=0;
+            if (change < lights - 1)
+            {
+                change++;
+            }
+            else
+            {
+                change = 0;
+            }
             switch (change)
             {
             case 1: // 呼吸
@@ -214,7 +226,7 @@ void loop()
                 flow_i = 0;
                 break;
             }
-            last_change_time = current_time;
+            // last_change_time = current_time;
         }
         change_pressed = false;
     }
@@ -228,6 +240,7 @@ void loop()
      * 灯效函数调用
      * 默认MAX4466关闭
      */
+
     if (!onoff)
     {
         function_light(change); // 默认灯效
