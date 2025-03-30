@@ -72,40 +72,49 @@ void changeISR()
  * 灯效服务区
  *
  */
-// 彩虹参数
-u_int8_t rainbow_start = 0; // 无需重置u_int8_t会自动初始化为0
-// 呼吸参数
-// 初始化
-u_int8_t breatheV = 32;
-// 亮灭
-bool breathe_on = true;
-// 流水参数
-int flow_i = 1;
 // 灯效函数
+// 彩虹
+u_int8_t rainbow_start = 0; // 无需重置u_int8_t会自动初始化为0
 void rainbow_ring(u_int8_t rainbow_start)
 {
     fill_palette(leds, LED_NUM, rainbow_start, 8, RainbowColors_p, 255, LINEARBLEND);
     LEDS.show();
 }
+
+// 呼吸
+// 初始化
+u_int8_t breatheV = 32;
+// 亮灭
+bool breathe_on = true;
 void breathe(u_int8_t breatheV)
 {
     fill_solid(leds, 40, CHSV(174, 255, breatheV));
     LEDS.show();
 }
+
+// 流水
+int flow_i = 0;
 void flower(int flow_i)
 {
-    fill_solid(leds+flow_i, 1, CRGB::Red);
+    fill_solid(leds + flow_i, 3, CRGB::Red); // 亮灯
+    if (flow_i >= 1 && flow_i < LED_NUM + 1) // 灭灯
+    {
+        fill_solid(leds + flow_i - 1, 1, CRGB::Black);
+    }
+    FastLED.show();
+    delay(50); // 延时
 }
-// 切换函数
+
+// 切换
 void function_light(int light_code)
 {
     switch (light_code)
     {
-    case 0:
+    case 0: // 彩虹
         rainbow_start += 1;
         rainbow_ring(rainbow_start);
         break;
-    case 1:
+    case 1: // 呼吸
         // 加减判断
         if (breatheV == 32)
         {
@@ -128,11 +137,14 @@ void function_light(int light_code)
         // 赋值给灯
         breathe(breatheV);
         break;
-    case 2:
+    case 2: // 流水
         flower(flow_i);
         flow_i += 1;
-        if (flow_i >= LED_NUM)
+        if (flow_i >= LED_NUM + 3)
         {
+            // 灯带末尾，清空灯带
+            fill_solid(leds, 40, CRGB::Black); // 先清空灯带
+            LEDS.show();                       // 显示清空
             flow_i = 0;
         }
         break;
@@ -190,41 +202,42 @@ void loop()
         unsigned long current_time = micros();
         if (current_time - change_last_time > debounce_delay)
         {
-            if (change < lights - 1)
-            {
-                change++;
-            }
-            else
-            {
-                change = 0;
-            }
+            change<= lights - 1?change++:change=0;
             switch (change)
             {
-            case 1:
+            case 1: // 呼吸
                 breatheV = 0;
                 break;
-            case 2:
-                fill_solid(leds, 40, CRGB::Black);
-                flow_i = 1;
-                break;
-
-            default:
+            case 2:                                // 流水
+                fill_solid(leds, 40, CRGB::Black); // 先清空灯带
+                LEDS.show();                       // 显示清空
+                flow_i = 0;
                 break;
             }
             last_change_time = current_time;
         }
         change_pressed = false;
     }
-    Serial.print("onoff: ");
-    Serial.println(onoff);
+    // Serial.print("onoff: ");
+    // Serial.println(onoff);
     Serial.print("change: ");
     Serial.println(change);
-    // 调用灯效
+    /***/
 
-    function_light(change);
-
-    // 读取MAX4466的数据
-    // int dB = analogRead(DATA_OUT);
-    // Serial.println(dB);
-    // delay(500);
+    /**
+     * 灯效函数调用
+     * 默认MAX4466关闭
+     */
+    if (!onoff)
+    {
+        function_light(change); // 默认灯效
+    }
+    else
+    {
+        // 读取MAX4466的数据
+        int dB = analogRead(DATA_OUT);
+        Serial.println(dB);
+        delay(500);
+    }
+    /***/
 }
