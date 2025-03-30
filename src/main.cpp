@@ -73,13 +73,14 @@ void changeISR()
  *
  */
 // 彩虹参数
-u_int8_t rainbow_start = 0;
-
+u_int8_t rainbow_start = 0; // 无需重置u_int8_t会自动初始化为0
 // 呼吸参数
 // 初始化
-u_int8_t breatheV = 0;
+u_int8_t breatheV = 32;
 // 亮灭
 bool breathe_on = true;
+// 流水参数
+int flow_i = 1;
 // 灯效函数
 void rainbow_ring(u_int8_t rainbow_start)
 {
@@ -91,10 +92,9 @@ void breathe(u_int8_t breatheV)
     fill_solid(leds, 40, CHSV(174, 255, breatheV));
     LEDS.show();
 }
-void flower()
+void flower(int flow_i)
 {
-    fill_solid(leds, 40, CRGB::Green);
-    LEDS.show();
+    fill_solid(leds+flow_i, 1, CRGB::Red);
 }
 // 切换函数
 void function_light(int light_code)
@@ -107,7 +107,7 @@ void function_light(int light_code)
         break;
     case 1:
         // 加减判断
-        if (breatheV == 0)
+        if (breatheV == 32)
         {
             breathe_on = true;
         }
@@ -129,7 +129,12 @@ void function_light(int light_code)
         breathe(breatheV);
         break;
     case 2:
-        flower();
+        flower(flow_i);
+        flow_i += 1;
+        if (flow_i >= LED_NUM)
+        {
+            flow_i = 0;
+        }
         break;
     }
 }
@@ -195,14 +200,12 @@ void loop()
             }
             switch (change)
             {
-            case 0:
-                /* code */
-                break;
             case 1:
                 breatheV = 0;
                 break;
             case 2:
-                /* code */
+                fill_solid(leds, 40, CRGB::Black);
+                flow_i = 1;
                 break;
 
             default:
